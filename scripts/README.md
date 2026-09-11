@@ -4,6 +4,37 @@ Host-side tooling. These are not managed by Terraform: they configure the New Re
 agent *on* the Windows hosts, which is the prerequisite for the dashboards to have any
 data to show.
 
+## `Install-NewRelicInfraAgent.ps1`
+
+Installs or upgrades the infrastructure agent -- the prerequisite for everything else,
+including `Enable-NriWinservices.ps1`, whose integration ships inside this agent.
+
+```powershell
+.\Install-NewRelicInfraAgent.ps1 -LicenseKey 'xxxxxxxxNRAL' -Tags @{ env = 'test' }
+```
+
+The key is the **ingest license key**, not the `NRAK-` user key Terraform uses. Fetch it
+from a shell with `.env` loaded:
+
+```sh
+curl -s -X POST https://api.newrelic.com/graphql -H "Api-Key: $NEW_RELIC_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"{ actor { account(id: 1468011) { licenseKey } } }"}'
+```
+
+Running it on a host that already has the agent is an in-place upgrade: the config file
+and everything under `integrations.d` survive, so it will not undo a winservices setup.
+
+`-Tags` are passed through the MSI's `CUSTOM_ATTRIBUTES` property rather than written into
+the YAML afterwards, so the installer owns the config file end to end. They become facets
+you can filter dashboards and alerts by -- `env` is the one worth setting from the start,
+since the Test and production dashboards are separated by host-name pattern today, which
+is more brittle than a tag.
+
+As of 2026-09-11 six TEST hosts still need this: UE1-TEST-ADC-A2, UE1-TEST-ADC-B2,
+UE1-TEST-WEB-B1, UE1-TEST-SQL-A2, UE1-TEST-SQL-B2 and UE1-TEST-REDIS-A1 -- the last runs
+Ubuntu, so it needs the Linux agent instead and cannot use this script.
+
 ## `Enable-NriWinservices.ps1`
 
 Enables the Windows Services integration (`nri-winservices`) on a Windows host.
