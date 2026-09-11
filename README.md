@@ -51,7 +51,7 @@ To add or remove a monitored site, edit the domain lists in `synthetics.tf`. Mon
 
 ## Notes
 
-- The Terraform state is local and gitignored (it contains resource details). Consider a remote backend if more people join.
+- `terraform.tfstate` is committed to the repo so every machine shares the same state (verified to contain no credentials). Discipline: pull before plan/apply, commit and push the state right after every apply, never apply from two machines at once (git has no state locking). A proper remote backend (HCP Terraform / S3) remains the better long-term option.
 - The MSSQL integration reports only from `UE2-SQL-A01` and `MIAT-VM-SQL-001`; the other SQL hosts need `nri-mssql` installed to appear in the SQL Server dashboard.
 - The Windows Services integration reports from only 1 of the 27 hosts (`BCA-VM-SRV-001`). The Windows Services dashboards stay empty for every other host until `scripts/Enable-NriWinservices.ps1` is rolled out.
 - Two pre-existing synthetic monitors ("Corp website", "Demo globalewallet") are not yet managed by Terraform.
