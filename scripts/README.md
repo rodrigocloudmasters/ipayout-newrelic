@@ -6,15 +6,13 @@ data to show.
 
 ## `Install-NewRelicInfraAgent.ps1`
 
-Installs or upgrades the infrastructure agent -- the prerequisite for everything else,
-including `Enable-NriWinservices.ps1`, whose integration ships inside this agent.
+Installs or upgrades the latest infrastructure agent -- the prerequisite for everything
+else, including `Enable-NriWinservices.ps1`, whose integration ships inside this agent.
 
-```powershell
-.\Install-NewRelicInfraAgent.ps1 -LicenseKey 'xxxxxxxxNRAL' -Tags @{ env = 'test' }
-```
+Running it on a host that already has the agent is an in-place upgrade: the config file
+and everything under `integrations.d` survive, so it will not undo a winservices setup.
 
-The key is the **ingest license key**, not the `NRAK-` user key Terraform uses. Fetch it
-from a shell with `.env` loaded:
+The key is the **ingest license key**, not the `NRAK-` user key Terraform uses:
 
 ```sh
 curl -s -X POST https://api.newrelic.com/graphql -H "Api-Key: $NEW_RELIC_API_KEY" \
@@ -22,18 +20,55 @@ curl -s -X POST https://api.newrelic.com/graphql -H "Api-Key: $NEW_RELIC_API_KEY
   -d '{"query":"{ actor { account(id: 1468011) { licenseKey } } }"}'
 ```
 
-Running it on a host that already has the agent is an in-place upgrade: the config file
-and everything under `integrations.d` survive, so it will not undo a winservices setup.
+### Without a proxy
+
+The AWS hosts reach New Relic directly, so this is the usual form:
+
+```powershell
+.\Install-NewRelicInfraAgent.ps1 -LicenseKey 'xxxxxxxxNRAL' -Tags @{ env = 'test' }
+```
+
+### With a proxy
+
+```powershell
+# plain proxy
+.\Install-NewRelicInfraAgent.ps1 -LicenseKey 'xxxxxxxxNRAL' -Proxy 'http://HOST:PORT'
+
+# take it from the machine's own WinHTTP settings
+.\Install-NewRelicInfraAgent.ps1 -LicenseKey 'xxxxxxxxNRAL' -UseSystemProxy
+
+# proxy that intercepts TLS -- needs its CA
+.\Install-NewRelicInfraAgent.ps1 -LicenseKey 'xxxxxxxxNRAL' `\
+    -Proxy 'http://HOST:PORT' -ProxyCaBundleFile 'C:\certs\corp-ca.pem'
+```
+
+`-Proxy` is applied twice: to the MSI download and to the agent config, because a host
+behind a proxy usually cannot reach `download.newrelic.com` directly either.
+
+**The TLS-interception case is the one that wastes an afternoon.** A proxy that re-signs
+traffic with its own CA makes the agent fail on certificate validation, and the error
+does not name the proxy as the cause. `-ProxyCaBundleFile` writes `ca_bundle_file` plus
+`proxy_validate_certificates: true` into the config and copies the certificate next to it
+so it survives an agent upgrade. The MSI has no property for those two settings, which is
+why the script appends them itself. `-SkipProxyCertValidation` exists to confirm the
+diagnosis in one run; it is not an end state.
+
+To find an existing proxy on a host that already works:
+
+```powershell
+netsh winhttp show proxy
+Select-String -Path 'C:\Program Files\New Relic\newrelic-infra\newrelic-infra.yml' -Pattern proxy
+```
 
 `-Tags` are passed through the MSI's `CUSTOM_ATTRIBUTES` property rather than written into
 the YAML afterwards, so the installer owns the config file end to end. They become facets
-you can filter dashboards and alerts by -- `env` is the one worth setting from the start,
-since the Test and production dashboards are separated by host-name pattern today, which
-is more brittle than a tag.
+you can filter dashboards and alerts by -- `env` is worth setting from the start, since
+the Test and production dashboards are separated by host-name pattern today, which is
+more brittle than a tag.
 
-As of 2026-09-11 six TEST hosts still need this: UE1-TEST-ADC-A2, UE1-TEST-ADC-B2,
-UE1-TEST-WEB-B1, UE1-TEST-SQL-A2, UE1-TEST-SQL-B2 and UE1-TEST-REDIS-A1 -- the last runs
-Ubuntu, so it needs the Linux agent instead and cannot use this script.
+As of 2026-09-11 five Windows TEST hosts still need this: UE1-TEST-ADC-A2,
+UE1-TEST-ADC-B2, UE1-TEST-WEB-B1, UE1-TEST-SQL-A2 and UE1-TEST-SQL-B2. UE1-TEST-REDIS-A1
+runs Ubuntu and needs the Linux agent instead, which this script does not cover.
 
 ## `Enable-NriWinservices.ps1`
 
