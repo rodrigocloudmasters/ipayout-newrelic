@@ -12,7 +12,15 @@ Terraform project managing New Relic for International Payout Systems Inc (accou
 
 All changes go through code: edit `.tf`, `terraform plan`, `terraform apply` (`set -a; source .env; set +a` first). UI edits to managed resources are drift and get reverted on the next apply.
 
-**Commit and push after every change, without being asked.** Rodrigo works from more than one laptop, so anything left uncommitted is invisible from the other one — and an uncommitted `terraform.tfstate` is worse than invisible: the other machine plans against a stale state and re-creates resources that already exist. That is exactly how a duplicate "Test Environment - Health Overview" dashboard appeared on 2026-09-16 and had to be deleted by hand. The loop is: `git pull` → change → `terraform apply` → `git add` (including `terraform.tfstate`) → `git commit` → `git push`, finished in the same turn the change was made.
+**Commit and push after every change, without being asked.** Rodrigo works from more than one laptop, so anything left uncommitted is invisible from the other one — and an uncommitted `terraform.tfstate` is worse than invisible: the other machine plans against a stale state and re-creates resources that already exist. That is exactly how a duplicate "Test Environment - Health Overview" dashboard appeared on 2026-09-16 and had to be deleted by hand. The loop is: `git pull` → change → `terraform apply` → `git add` (including `terraform.tfstate`) → `git commit` → `git push`, finished in the same turn the change was made. Do not hand these commands back to the user to run.
+
+Pushing needs an explicit SSH identity. This machine holds keys for two GitHub accounts and has no `~/.ssh/config`, so git defaults to `id_ed25519`, which authenticates as `rembeita` — read access only on this repo. Fetch works and push fails with a confusing "Permission denied" that looks like a repo problem. Prefix git commands that reach the remote:
+
+```sh
+GIT_SSH_COMMAND='ssh -i ~/.ssh/id_ed25519_github -o IdentitiesOnly=yes' git push origin main
+```
+
+`id_ed25519_github` authenticates as `rodrigocloudmasters`, who owns the repo. A `~/.ssh/config` entry for github.com would make the prefix unnecessary, but it would also pin every github.com repo on the machine to that identity, so it has been left to the user to decide.
 
 ## Current state
 
