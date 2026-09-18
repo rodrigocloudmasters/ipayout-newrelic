@@ -215,3 +215,152 @@ resource "newrelic_workflow" "test_host_down" {
     notification_triggers = ["ACTIVATED", "ACKNOWLEDGED", "CLOSED"]
   }
 }
+
+# ---------------------------------------------------------------- data ingest
+
+# Account-wide on purpose, unlike everything above. Ingest is billed per account, so
+# scoping this to the Test hosts would watch a fraction of the bill and miss the cases
+# that actually cost money.
+#
+# Notifies rodrigo@cloudmastersit.com by email rather than Slack: a cost problem is not
+# an on-call problem, and it is addressed to whoever owns the invoice.
+#
+# Why a daily rate rather than a month-to-date total: NRQL alert conditions evaluate
+# rolling windows, so `SINCE this month` is not available to them. The daily rate is the
+# projection -- multiply by 30 for the monthly figure, which is what the thresholds below
+# are named after.
+#
+# Measured baseline over the three weeks to 2026-09-18: 37.9 to 46.1 GB/day, sitting
+# around 40, which projects to roughly 1,200 GB/month. The largest contributors over 30
+# days were InfraProcessBytes (541 GB), MetricsBytes (184 GB) and InfraIntegrationBytes
+# (42 GB).
+#
+# The failure mode this exists to catch is a configuration mistake, not organic growth.
+# Reporting every Windows service at the default 30s interval instead of 400s across the
+# fleet would add roughly 240 GB/month on its own -- about +8 GB/day, which these
+# thresholds catch within hours instead of at the end of the billing period.
+
+locals {
+  # Thresholds in GB/day. Change these two numbers to retune the alert.
+  #   50 GB/day = ~1,500 GB/month   (25% above the current run rate)
+  #   60 GB/day = ~1,800 GB/month   (50% above)
+  ingest_warning_gb_per_day  = 50
+  ingest_critical_gb_per_day = 60
+}
+
+resource "newrelic_notification_destination" "email_billing" {
+  account_id = 1468011
+  name       = "Billing owner"
+  type       = "EMAIL"
+
+  property {
+    key   = "email"
+    value = "rodrigo@cloudmastersit.com"
+  }
+}
+
+resource "newrelic_notification_channel" "email_billing" {
+  account_id     = 1468011
+  name           = "Billing owner (data ingest)"
+  type           = "EMAIL"
+  product        = "IINT"
+  destination_id = newrelic_notification_destination.email_billing.id
+
+  property {
+    key   = "subject"
+    value = "New Relic data ingest is above the expected rate"
+  }
+}
+
+resource "newrelic_alert_policy" "data_ingest" {
+  account_id = 1468011
+  name       = "Data ingest"
+
+  # One incident for the account: there is a single bill, so a second incident would say
+  # nothing the first did not.
+  incident_preference = "PER_POLICY"
+}
+
+resource "newrelic_nrql_alert_condition" "data_ingest" {
+  account_id = 1468011
+  policy_id  = newrelic_alert_policy.data_ingest.id
+  name       = "Data ingest rate is above budget"
+  type       = "static"
+  enabled    = true
+
+  description = <<-EOT
+    Data ingest is running above the expected rate. Multiply the value by 30 for the
+    monthly projection: 50 GB/day is about 1,500 GB/month, 60 GB/day about 1,800.
+
+    The normal rate for this account is around 40 GB/day (~1,200 GB/month). A sustained
+    jump is almost always a configuration change rather than real growth -- an
+    integration sampling far more often than intended, a new log source, or a
+    scrape_interval that was shortened.
+
+    To find the cause:
+
+      SELECT sum(GigabytesIngested) FROM NrConsumption
+      WHERE productLine = 'DataPlatform' FACET usageMetric SINCE 2 days ago
+
+    then drill into whichever bucket grew. For Windows services specifically:
+
+      SELECT rate(bytecountestimate(), 1 day) / 1e9 FROM Metric
+      WHERE metricName = 'windows_service_state' FACET hostname SINCE 1 day ago
+  EOT
+
+  nrql {
+    query = "SELECT rate(sum(GigabytesIngested), 1 day) FROM NrConsumption WHERE productLine = 'DataPlatform'"
+  }
+
+  title_template = "Data ingest is running at {{value}} GB/day"
+
+  # NrConsumption is written roughly hourly and can run two or more hours behind, with
+  # whole hours missing. An hour-long window with the maximum delay rides over the lag,
+  # and the long threshold_duration below means a single late or missing hour cannot
+  # move the alert either way.
+  aggregation_method = "event_timer"
+  aggregation_window = 3600
+  aggregation_timer  = 1200
+  fill_option        = "none"
+
+  critical {
+    operator              = "above"
+    threshold             = local.ingest_critical_gb_per_day
+    threshold_duration    = 10800 # 3 h
+    threshold_occurrences = "all"
+  }
+
+  warning {
+    operator              = "above"
+    threshold             = local.ingest_warning_gb_per_day
+    threshold_duration    = 21600 # 6 h -- this is a billing trend, not an outage
+    threshold_occurrences = "all"
+  }
+
+  # Gaps in NrConsumption are normal, so silence must never be read as a problem here.
+  expiration_duration            = 21600
+  open_violation_on_expiration   = false
+  close_violations_on_expiration = true
+}
+
+resource "newrelic_workflow" "data_ingest" {
+  account_id            = 1468011
+  name                  = "Data ingest -> billing owner"
+  muting_rules_handling = "DONT_NOTIFY_FULLY_MUTED_ISSUES"
+
+  issues_filter {
+    name = "data-ingest"
+    type = "FILTER"
+
+    predicate {
+      attribute = "labels.policyIds"
+      operator  = "EXACTLY_MATCHES"
+      values    = [newrelic_alert_policy.data_ingest.id]
+    }
+  }
+
+  destination {
+    channel_id            = newrelic_notification_channel.email_billing.id
+    notification_triggers = ["ACTIVATED", "CLOSED"]
+  }
+}
