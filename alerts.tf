@@ -80,6 +80,11 @@ resource "newrelic_nrql_alert_condition" "test_disk_space" {
     query = "SELECT latest(diskUsedPercent) FROM StorageSample WHERE ${local.test_alert_scope} FACET hostname, mountPoint"
   }
 
+  # The default title names only the host ("UE1-TEST-ADC-A2 query result is > 85.0"),
+  # which is ambiguous the moment a host has two volumes over threshold -- two identical
+  # Slack messages, neither saying which disk. The facet values are exposed as tags.
+  title_template = "Disk {{tags.mountPoint}} on {{tags.hostname}} is above threshold"
+
   # StorageSample arrives about every 20s; a 5-minute window smooths a single late
   # sample without delaying a real signal noticeably.
   aggregation_method = "event_flow"
@@ -138,6 +143,9 @@ resource "newrelic_nrql_alert_condition" "test_host_down" {
   nrql {
     query = "SELECT uniqueCount(hostname) FROM SystemSample WHERE ${local.test_alert_scope} FACET hostname"
   }
+
+  # "query result is < 1" reads as a threshold breach rather than what it is.
+  title_template = "Host {{tags.hostname}} stopped reporting to New Relic"
 
   aggregation_method = "event_flow"
   aggregation_window = 60
