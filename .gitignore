@@ -10,3 +10,6 @@ crash.log
 # Paste-ready install notes: these embed the ingest license key in plain text,
 # so they stay out of the repo. Regenerate them from scripts/ if lost.
 instalacion/
+
+# LibreOffice lock files, left behind while a report is open
+.~lock.*#
