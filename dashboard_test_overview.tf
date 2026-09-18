@@ -6,11 +6,14 @@
 # at once. This one leads with that: the top row is the only part you read when nothing
 # is wrong, and every tile below it is the detail behind one of those numbers.
 #
-# It also tracks its own blind spot. Five of the eleven Test hosts send nothing at all
-# (both domain controllers, both SQL 2025 hosts, and the Ubuntu Redis host), so a
-# dashboard that only showed the six that report would look complete while missing
-# almost half the environment. The "Hosts reporting" tile reads 6 of 11 until that
-# changes, and the Coverage section names what is missing.
+# It also tracks its own blind spot. A dashboard that only showed the hosts which
+# report would look complete while omitting the ones that send nothing, so the
+# "Hosts reporting (of 11)" tile compares against the known size of the environment
+# and the Coverage section lists which hosts each layer actually covers.
+#
+# Keep that section free of hardcoded host lists. The first version named the five
+# hosts that were not reporting on 2026-09-15; four came online the next day and the
+# text stayed wrong for days before anyone noticed.
 
 locals {
   # Test host scope. SystemSample, StorageSample and Metric use `hostname`;
@@ -19,8 +22,11 @@ locals {
   test_ov_apm  = "host LIKE 'UE1-TEST%'"
 
   # Thresholds that mark a host as needing attention. Set from what the fleet actually
-  # runs at: the six reporting hosts sit between 62% and 91% memory, so 85 flags the
-  # genuinely tight ones without lighting up on normal Windows behaviour.
+  # runs at rather than a round number: the reporting hosts sit roughly between 50% and
+  # 91% memory, so 85 flags the genuinely tight ones without lighting up on normal
+  # Windows behaviour. Disk is the same figure, but read the "Free GB" column alongside
+  # it -- 87% on a 267 GB volume leaves 34 GB and is fine, while 85% on a 32 GB system
+  # drive leaves under 5 GB and is not.
   test_ov_mem_pct  = 85
   test_ov_disk_pct = 85
 }
@@ -318,6 +324,10 @@ resource "newrelic_one_dashboard" "test_overview" {
       text   = "# Instrumentation coverage"
     }
 
+    # Deliberately says what to do, not what the numbers are. An earlier version of this
+    # widget listed the five hosts that were not reporting; four of them came online the
+    # next day and the text sat there stale for days. Counts belong in the tiles below,
+    # which read from the data.
     widget_markdown {
       title  = ""
       row    = 29
@@ -325,19 +335,25 @@ resource "newrelic_one_dashboard" "test_overview" {
       width  = 5
       height = 4
       text   = <<-EOT
-        ### Not reporting
+        ### Reading the coverage tiles
 
-        Five of the eleven Test hosts send no data at all. They could not reach
-        `download.newrelic.com` and need the proxy at `10.24.70.241:3128`:
+        Eleven hosts make up the Test environment. The two tables to the right list the
+        hosts that **are** covered by each layer — a host missing from one of them is a
+        host that layer cannot see.
 
-        - `UE1-TEST-ADC-A2` — domain controller
-        - `UE1-TEST-ADC-B2` — domain controller
-        - `UE1-TEST-SQL-A2` — SQL Server 2025
-        - `UE1-TEST-SQL-B2` — SQL Server 2025
-        - `UE1-TEST-REDIS-A1` — Ubuntu, needs the Linux agent instead
+        **Infrastructure agent** — the "Hosts reporting" tile above. Anything below 11
+        means a host sends nothing at all.
 
-        The two SQL hosts will also need the `nri-mssql` integration once the
-        infrastructure agent is on them.
+        **Windows Services** — bundled with the agent, so a host that reports metrics but
+        is absent from the services table only needs its config file and a restart.
+
+        **`UE1-TEST-REDIS-A1` runs Ubuntu.** It needs the Linux agent, and neither the
+        Windows Services integration nor the .NET agent applies to it, so it will never
+        appear in those two tables.
+
+        **The two SQL hosts need `nri-mssql`** on top of the agent for any database
+        metric. Its absence does not show up here at all — check the "SQL Server"
+        dashboard.
       EOT
     }
 
