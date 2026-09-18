@@ -180,3 +180,34 @@ These are all silent failures, which is why the script checks for them:
   `MIAT-VM-SRV-001` (1.62.0) are worth upgrading.
 - Proxy settings are irrelevant: the agent scrapes the exporter over loopback and Go
   never proxies localhost.
+
+## `Set-ProcessSampleRate.ps1`
+
+Raises the infrastructure agent's process-metric sample interval, which is the single
+largest lever on this account's bill.
+
+```powershell
+.\Set-ProcessSampleRate.ps1              # 60s, the recommended value
+.\Set-ProcessSampleRate.ps1 -Seconds 20  # back to the default
+```
+
+Measured on 2026-09-18: `ProcessSample` is **859 GB/month across the account, about 72%
+of total ingest**. Each host reports roughly 240 processes every 20 seconds by default --
+around 40 GB/month per host for per-process detail alone. Sixty seconds cuts that to a
+third, saving on the order of 269 GB/month across the ten Test hosts, or 22% of the
+account total.
+
+The cost is resolution in the "Host Processes" dashboard: which process is consuming CPU
+and memory stays visible, but a spike shorter than a minute may not register. That
+changes no decision in Test. **Evaluate before applying to production hosts** where
+someone does fine-grained performance work.
+
+`-Seconds -1` disables `ProcessSample` entirely. That saves the full amount but empties
+the Host Processes dashboard, so 60s is the better trade in almost every case. The
+agent's minimum is 20; lower values are ignored.
+
+Worth knowing for context: of the ~199 GB/month this project added to the bill, 179 GB is
+`ProcessSample` from the five hosts whose agents were installed as part of the work --
+not something that was switched on deliberately, but the default behaviour of installing
+the agent at all. What was deliberately enabled (Windows services, synthetics, APM) comes
+to about 16 GB/month combined.
