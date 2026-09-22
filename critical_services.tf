@@ -1,0 +1,185 @@
+# Critical services on UE1-TEST-SRV-A1: the business requires 100% uptime for these.
+# Service names are as reported by nri-winservices (lowercase); note Ripple reports as
+# plain "ripplepaymentsservice" on this host, unlike production's "ipsripplepaymentsservice".
+#
+# Detection resolution follows the 400s scrape: the alert aggregates in 600s windows, so
+# a stopped service notifies Slack within ~10-20 minutes. The uptime figure on the
+# dashboard is the percentage of samples in "running" state at that same resolution.
+
+locals {
+  critical_services_host = "UE1-TEST-SRV-A1"
+  critical_services_srv  = "'ipsportalcoreschedulerservice', 'ips_abacollectorservice', 'ips_emailsenderservice', 'ips_feecollector', 'ips_fxservice', 'ips_healthmonitor', 'ips_loadvirtualaccountsservice', 'ripplepaymentsservice'"
+}
+
+resource "newrelic_alert_policy" "test_critical_services" {
+  account_id          = 1468011
+  name                = "Test - Critical services"
+  incident_preference = "PER_CONDITION_AND_TARGET"
+}
+
+resource "newrelic_nrql_alert_condition" "test_critical_services" {
+  account_id = 1468011
+  policy_id  = newrelic_alert_policy.test_critical_services.id
+  name       = "Critical service is not running on ${local.critical_services_host}"
+  type       = "static"
+  enabled    = true
+
+  description = <<-EOT
+    One of the eight services the business requires at 100% uptime on
+    ${local.critical_services_host} is not in the "running" state.
+
+    The value per service is 1 while running and 0 while stopped/paused. Signal loss is
+    also an alert (open_violation_on_expiration): a service that stops reporting was
+    uninstalled, renamed, or the winservices integration on the host broke -- each of
+    those also violates the uptime requirement.
+  EOT
+
+  nrql {
+    query = "SELECT filter(uniqueCount(entity.guid), WHERE state = 'running') FROM Metric WHERE metricName = 'windows_service_state' AND hostname = '${local.critical_services_host}' AND service_name IN (${local.critical_services_srv}) FACET service_name"
+  }
+
+  title_template = "Critical service {{tags.service_name}} is not running on ${local.critical_services_host}"
+
+  aggregation_method = "event_flow"
+  aggregation_window = 600 # must exceed the 400s scrape so every window holds a sample
+  aggregation_delay  = 120
+
+  critical {
+    operator              = "below"
+    threshold             = 1
+    threshold_duration    = 600
+    threshold_occurrences = "all"
+  }
+
+  expiration_duration            = 1800
+  open_violation_on_expiration   = true # a vanished service also breaks the uptime requirement
+  close_violations_on_expiration = false
+}
+
+# A workflow cannot share a notification channel with another workflow (the API rejects
+# it with INVALID_PARAMETER), so this one gets its own channel to the same Slack room.
+resource "newrelic_notification_channel" "slack_critical_services" {
+  account_id     = 1468011
+  name           = "newrelic-errors (Test critical services)"
+  type           = "SLACK"
+  product        = "IINT"
+  destination_id = local.slack_destination_id
+
+  property {
+    key   = "channelId"
+    value = local.slack_channel_id
+  }
+}
+
+resource "newrelic_workflow" "test_critical_services" {
+  account_id            = 1468011
+  name                  = "Test - Critical services -> Slack"
+  muting_rules_handling = "DONT_NOTIFY_FULLY_MUTED_ISSUES"
+
+  issues_filter {
+    name = "test-critical-services"
+    type = "FILTER"
+
+    predicate {
+      attribute = "labels.policyIds"
+      operator  = "EXACTLY_MATCHES"
+      values    = [newrelic_alert_policy.test_critical_services.id]
+    }
+  }
+
+  destination {
+    channel_id            = newrelic_notification_channel.slack_critical_services.id
+    notification_triggers = ["ACTIVATED", "ACKNOWLEDGED", "CLOSED"]
+  }
+}
+
+resource "newrelic_one_dashboard" "test_critical_services" {
+  account_id  = 1468011
+  name        = "Test - Critical Services Uptime"
+  description = "Uptime of the eight services required at 100% on ${local.critical_services_host}. Uptime is the percentage of winservices samples (every 400s) in the running state over the selected time range."
+  permissions = "public_read_write"
+
+  page {
+    name = "Overview"
+
+    widget_billboard {
+      title    = "Critical services not running"
+      row      = 1
+      column   = 1
+      width    = 3
+      height   = 3
+      critical = 1
+
+      nrql_query {
+        account_id = 1468011
+        query      = "SELECT count(*) AS 'Not running' FROM (FROM Metric SELECT latest(state) AS 'st' WHERE metricName = 'windows_service_state' AND hostname = '${local.critical_services_host}' AND service_name IN (${local.critical_services_srv}) FACET service_name LIMIT MAX) WHERE st != 'running'"
+      }
+    }
+
+    widget_billboard {
+      title  = "Services reporting (of 8)"
+      row    = 1
+      column = 4
+      width  = 3
+      height = 3
+
+      nrql_query {
+        account_id = 1468011
+        query      = "SELECT uniqueCount(service_name) AS 'Reporting' FROM Metric WHERE metricName = 'windows_service_state' AND hostname = '${local.critical_services_host}' AND service_name IN (${local.critical_services_srv})"
+      }
+    }
+
+    widget_billboard {
+      title  = "Combined uptime %"
+      row    = 1
+      column = 7
+      width  = 3
+      height = 3
+
+      nrql_query {
+        account_id = 1468011
+        query      = "SELECT percentage(count(*), WHERE state = 'running') AS 'Uptime %' FROM Metric WHERE metricName = 'windows_service_state' AND hostname = '${local.critical_services_host}' AND service_name IN (${local.critical_services_srv})"
+      }
+    }
+
+    widget_billboard {
+      title  = "Host reporting"
+      row    = 1
+      column = 10
+      width  = 3
+      height = 3
+
+      nrql_query {
+        account_id = 1468011
+        query      = "SELECT uniqueCount(hostname) AS 'Host' FROM SystemSample WHERE hostname = '${local.critical_services_host}'"
+      }
+    }
+
+    widget_table {
+      title  = "Uptime % and current state by service"
+      row    = 4
+      column = 1
+      width  = 6
+      height = 5
+
+      nrql_query {
+        account_id = 1468011
+        query      = "SELECT percentage(count(*), WHERE state = 'running') AS 'Uptime %', latest(state) AS 'Now', latest(display_name) AS 'Display name' FROM Metric WHERE metricName = 'windows_service_state' AND hostname = '${local.critical_services_host}' AND service_name IN (${local.critical_services_srv}) FACET service_name LIMIT MAX"
+      }
+    }
+
+    widget_line {
+      title          = "Uptime % by service - trend"
+      row            = 4
+      column         = 7
+      width          = 6
+      height         = 5
+      legend_enabled = true
+
+      nrql_query {
+        account_id = 1468011
+        query      = "SELECT percentage(count(*), WHERE state = 'running') AS 'Uptime %' FROM Metric WHERE metricName = 'windows_service_state' AND hostname = '${local.critical_services_host}' AND service_name IN (${local.critical_services_srv}) FACET service_name TIMESERIES AUTO"
+      }
+    }
+  }
+}
