@@ -8,8 +8,27 @@ date below before quoting any number from them.
 |---|---|---|
 | `IPAYOUT - New Relic agent status (TEST).xlsx` | English | 2026-09-11 |
 | `IPAYOUT - Estado agente New Relic (TEST).xlsx` | Spanish | 2026-09-11 |
+| `2026-09-25 Guia de dashboards New Relic.pdf` | Spanish | 2026-09-25 |
 
-## What they cover
+## The dashboard guide
+
+`2026-09-25 Guia de dashboards New Relic.pdf` is a different kind of document from the
+snapshots below: it explains what each of the 11 dashboards we built shows, what it is
+for, which data source feeds it and what it does not cover yet. Dashboard, page and
+widget names stay in English because that is how they live in New Relic.
+
+It is written as HTML and rendered with headless Chrome. The source sits next to it as
+`2026-09-25 Guia de dashboards New Relic.html`; to regenerate after an edit:
+
+```sh
+google-chrome --headless --no-pdf-header-footer \
+  --print-to-pdf="2026-09-25 Guia de dashboards New Relic.pdf" \
+  "2026-09-25 Guia de dashboards New Relic.html"
+```
+
+The coverage figures in it (Appendix B) are point-in-time like everything else here.
+
+## What the TEST snapshots cover
 
 The 11 AWS TEST hosts across all three layers of instrumentation: infrastructure agent,
 the Windows Services integration, and the .NET agent (APM).
