@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>New Relic — Dashboard guide</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 16mm 16mm 16mm;
+    @bottom-center { content: counter(page); }
+  }
+
+  @page :first {
+    @bottom-center { content: ""; }
+  }
+
+  :root {
+    --ink:      #14181f;
+    --ink-soft: #464f5d;
+    --ink-mute: #6b7382;
+    --rule:     #d8dce3;
+    --rule-soft:#e9ecf1;
+    --accent:   #0b5c74;
+    --accent-bg:#eef5f8;
+    --warn-bg:  #fdf4e7;
+    --warn-rule:#d99b3a;
+    --code-bg:  #f4f6f8;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { font-size: 10.2pt; }
+
+  body {
+    margin: 0;
+    font-family: "Noto Sans", "DejaVu Sans", sans-serif;
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- Cover ---------- */
+
+  .cover {
+    height: 247mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    page-break-after: always;
+  }
+
+  .cover-top { padding-top: 38mm; }
+
+  .eyebrow {
+    font-size: 8.6pt;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin: 0 0 10mm 0;
+  }
+
+  .cover h1 {
+    font-size: 30pt;
+    line-height: 1.12;
+    font-weight: 700;
+    letter-spacing: -.015em;
+    margin: 0 0 6mm 0;
+    max-width: 150mm;
+  }
+
+  .cover .sub {
+    font-size: 12pt;
+    color: var(--ink-soft);
+    line-height: 1.45;
+    max-width: 135mm;
+    margin: 0;
+  }
+
+  .cover-rule {
+    height: 3px;
+    background: var(--accent);
+    width: 42mm;
+    margin: 9mm 0;
+  }
+
+  .cover-meta {
+    border-top: 1px solid var(--rule);
+    padding-top: 5mm;
+    display: flex;
+    gap: 14mm;
+    font-size: 9pt;
+    color: var(--ink-mute);
+  }
+
+  .cover-meta dt {
+    font-weight: 700;
+    color: var(--ink-soft);
+    margin: 0 0 1mm 0;
+    font-size: 8.2pt;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  .cover-meta dd { margin: 0; }
+
+  /* ---------- Structure ---------- */
+
+  h2 {
+    font-size: 16pt;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    margin: 0 0 4mm 0;
+    padding-bottom: 2.5mm;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  h3 {
+    font-size: 12.5pt;
+    font-weight: 700;
+    margin: 0 0 1mm 0;
+    letter-spacing: -.005em;
+  }
+
+  h4 {
+    font-size: 9.4pt;
+    font-weight: 700;
+    margin: 4.5mm 0 1.5mm 0;
+    color: var(--accent);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  p { margin: 0 0 3mm 0; }
+
+  ul { margin: 0 0 3mm 0; padding-left: 5mm; }
+  li { margin-bottom: 1.2mm; }
+
+  section.intro { page-break-after: always; }
+
+  /* ---------- Dashboard entry ---------- */
+
+  /* Entries flow across pages rather than jumping whole to the next one, which
+     left half-empty pages. What must not split is kept together individually. */
+  .dash {
+    margin-bottom: 9mm;
+    padding-bottom: 7mm;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  .dash-head, .dash-file, h2, h3, h4, .kicker { page-break-after: avoid; }
+  .dash-head, .purpose, .note, .facts tr { page-break-inside: avoid; }
+
+  .dash:last-child { border-bottom: none; }
+
+  .dash-head {
+    display: flex;
+    align-items: baseline;
+    gap: 3mm;
+    margin-bottom: 1.5mm;
+  }
+
+  .num {
+    font-size: 9pt;
+    font-weight: 700;
+    color: #fff;
+    background: var(--accent);
+    min-width: 6.4mm;
+    height: 6.4mm;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    position: relative;
+    top: -.4mm;
+  }
+
+  .dash-file {
+    font-family: "DejaVu Sans Mono", monospace;
+    font-size: 8.2pt;
+    color: var(--ink-mute);
+    margin: 0 0 3mm 9.4mm;
+  }
+
+  .dash-body { margin-left: 9.4mm; }
+
+  .purpose {
+    background: var(--accent-bg);
+    border-left: 3px solid var(--accent);
+    padding: 3mm 4mm;
+    margin: 0 0 4mm 0;
+    font-size: 10pt;
+  }
+
+  .purpose strong { color: var(--accent); }
+
+  .facts {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+    margin: 0 0 4mm 0;
+  }
+
+  .facts th {
+    text-align: left;
+    vertical-align: top;
+    font-weight: 700;
+    color: var(--ink-soft);
+    width: 30mm;
+    padding: 1.4mm 4mm 1.4mm 0;
+    border-bottom: 1px solid var(--rule-soft);
+    white-space: nowrap;
+  }
+
+  .facts td {
+    vertical-align: top;
+    padding: 1.4mm 0;
+    border-bottom: 1px solid var(--rule-soft);
+    color: var(--ink);
+  }
+
+  .note {
+    background: var(--warn-bg);
+    border-left: 3px solid var(--warn-rule);
+    padding: 2.6mm 4mm;
+    font-size: 9.2pt;
+    margin: 0 0 3mm 0;
+  }
+
+  .note b { font-weight: 700; }
+
+  code, .m {
+    font-family: "DejaVu Sans Mono", monospace;
+    font-size: .88em;
+    background: var(--code-bg);
+    padding: .5mm 1.2mm;
+    border-radius: 2px;
+    color: #1d3f4c;
+  }
+
+  /* ---------- Index table ---------- */
+
+  table.index {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8.8pt;
+    margin-bottom: 5mm;
+  }
+
+  table.index th {
+    text-align: left;
+    font-size: 7.8pt;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    border-bottom: 1.5px solid var(--ink);
+    padding: 0 3mm 1.8mm 0;
+    font-weight: 700;
+  }
+
+  table.index td {
+    padding: 1.5mm 3mm 1.5mm 0;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+
+  table.index td:first-child { font-weight: 700; width: 46mm; }
+  table.index td:last-child { padding-right: 0; }
+
+  /* A group label must not sit alone at the foot of a page. */
+  .group-row { page-break-after: avoid; }
+
+  .group-row td {
+    padding-top: 2.6mm;
+    font-size: 7.8pt;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .lead {
+    font-size: 11pt;
+    color: var(--ink-soft);
+    line-height: 1.5;
+    margin-bottom: 5mm;
+  }
+
+  .kicker {
+    font-size: 8.2pt;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    font-weight: 700;
+    margin-bottom: 2mm;
+  }
+
+  .two-col { column-count: 2; column-gap: 8mm; }
+  .two-col p, .two-col li { break-inside: avoid; }
+
+  dl.gloss { margin: 0; font-size: 9.2pt; }
+  dl.gloss dt {
+    font-family: "DejaVu Sans Mono", monospace;
+    font-weight: 700;
+    color: var(--accent);
+    margin-top: 1.9mm;
+    font-size: 8.8pt;
+  }
+  dl.gloss dd { margin: .5mm 0 0 0; color: var(--ink-soft); }
+
+  .page-break { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<div class="cover">
+  <div class="cover-top">
+    <p class="eyebrow">International Payout Systems Inc · New Relic</p>
+    <h1>Dashboard guide</h1>
+    <div class="cover-rule"></div>
+    <p class="sub">What each of the eleven dashboards built for the account shows, what it is
+    for, where its data comes from and what it does not cover yet.</p>
+  </div>
+  <dl class="cover-meta">
+    <div><dt>Date</dt><dd>25 September 2026</dd></div>
+    <div><dt>Account</dt><dd>1468011 (US region)</dd></div>
+    <div><dt>Managed by</dt><dd>Terraform — repo <code>ipayout-newrelic</code></dd></div>
+  </dl>
+</div>
+
+<!-- ============ INTRO ============ -->
+<section class="intro">
+  <h2>How this is organised</h2>
+
+  <p class="lead">The account holds twenty-one dashboards. Ten already existed and were
+  imported as they were; the remaining eleven are the ones we built, and those are what this
+  document covers.</p>
+
+  <p>All of them are defined in code, with Terraform, in the <code>ipayout-newrelic</code>
+  repository. Each dashboard lives in its own <code>.tf</code> file, which is the single source
+  of truth: to change a widget you edit that file, run <code>terraform plan</code> to see the
+  difference and <code>terraform apply</code> to apply it. Editing a dashboard from the New
+  Relic UI works until the next <code>apply</code> reverts it; in exchange, every dashboard is
+  reproducible and carries the record of why it looks the way it does.</p>
+
+  <p>They fall into three families: six look at the whole account and in practice mostly show
+  production, four are scoped to the Test environment — which an account-wide dashboard buries
+  under production traffic — and one is the production twin of the critical-services board.</p>
+
+  <h4>Index</h4>
+  <table class="index">
+    <thead>
+      <tr><th>Dashboard</th><th>Answers</th><th>Data source</th></tr>
+    </thead>
+    <tbody>
+      <tr class="group-row"><td colspan="3">Whole account</td></tr>
+      <tr>
+        <td>Infrastructure - Hosts (CPU, Memory, Disk)</td>
+        <td>Is any server running out of CPU, memory or disk?</td>
+        <td>Infrastructure agent</td>
+      </tr>
+      <tr>
+        <td>Host Processes</td>
+        <td>Which process is eating that host?</td>
+        <td>Infrastructure agent</td>
+      </tr>
+      <tr>
+        <td>Web Availability (Synthetics)</td>
+        <td>Are the sites up, and how fast do they answer?</td>
+        <td>135 ping monitors</td>
+      </tr>
+      <tr>
+        <td>SQL Server</td>
+        <td>How are the database instances doing?</td>
+        <td>nri-mssql integration</td>
+      </tr>
+      <tr>
+        <td>APM - Application Health</td>
+        <td>How are the .NET applications performing?</td>
+        <td>APM agents</td>
+      </tr>
+      <tr>
+        <td>Errors &amp; Exceptions</td>
+        <td>What is failing, with which exception, in which app?</td>
+        <td>APM agents</td>
+      </tr>
+      <tr class="group-row"><td colspan="3">Test environment</td></tr>
+      <tr>
+        <td>Test Environment - Health Overview</td>
+        <td>Is Test healthy right now?</td>
+        <td>All three sources</td>
+      </tr>
+      <tr>
+        <td>Windows Services - Test Environment</td>
+        <td>Which Windows services run, and which stopped?</td>
+        <td>nri-winservices integration</td>
+      </tr>
+      <tr>
+        <td>APM - Test Environment</td>
+        <td>How are the Test applications performing?</td>
+        <td>APM agents</td>
+      </tr>
+      <tr>
+        <td>Test - Critical Services Uptime</td>
+        <td>Did the services required at 100% stay at 100%?</td>
+        <td>nri-winservices integration</td>
+      </tr>
+      <tr class="group-row"><td colspan="3">Production</td></tr>
+      <tr>
+        <td>Production - Critical Services Uptime</td>
+        <td>The same, for the production hosts</td>
+        <td>nri-winservices integration</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ FAMILY 1 ============ -->
+<section>
+  <h2>Whole account</h2>
+
+  <!-- 1 -->
+  <div class="dash">
+    <div class="dash-head"><span class="num">1</span><h3>Infrastructure - Hosts (CPU, Memory, Disk)</h3></div>
+    <p class="dash-file">dashboard_hosts.tf</p>
+    <div class="dash-body">
+      <p class="purpose"><strong>What it is for:</strong> the front page of infrastructure. It
+      answers whether any server is about to run out of CPU, memory or disk, and whether that is
+      getting worse or is just a spike.</p>
+
+      <table class="facts">
+        <tr><th>What it shows</th><td>Three tables with the current state — CPU&nbsp;% per host, memory&nbsp;% per host, and disk&nbsp;% per host and volume — and three trend charts with the same metrics over time.</td></tr>
+        <tr><th>Source</th><td>Infrastructure agent: <code>SystemSample</code> for CPU and memory, <code>StorageSample</code> for disk.</td></tr>
+        <tr><th>Scope</th><td>The whole account, with no fixed host filter. All 27 reporting servers appear on their own, and a new host shows up without touching the code.</td></tr>
+        <tr><th>How to read it</th><td>The <span class="m">Host</span> selector at the top is multi-select and filters the whole board. The tables answer "how is it now?"; the lines answer "has it been climbing?".</td></tr>
+      </table>
+
+      <div class="note"><b>The detail that matters:</b> disk is broken out per host <em>and per
+      volume</em>, so a server with C:, D: and E: appears three times. That is deliberate — disk
+      problems are almost always one specific volume, like the P: drive on UE2-SQL-A01 sitting
+      at 96%.</div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="dash">
+    <div class="dash-head"><span class="num">2</span><h3>Host Processes</h3></div>
+    <p class="dash-file">dashboard_processes.tf</p>
+    <div class="dash-body">
+      <p class="purpose"><strong>What it is for:</strong> the next step after the previous board.
+      When that one flags a host on high CPU or memory, this one says which process is causing it.</p>
+
+      <table class="facts">
+        <tr><th>What it shows</th><td>Top 25 processes by CPU and top 25 by memory, in tables broken out by host and process name, plus trends for the top 10 of each.</td></tr>
+        <tr><th>Source</th><td>Infrastructure agent: <code>ProcessSample</code>.</td></tr>
+        <tr><th>Scope</th><td>The whole account, with the same <span class="m">Host</span> selector.</td></tr>
+        <tr><th>How to read it</th><td>Pick the suspect host in the selector first; unfiltered, the tables mix processes from different servers and stop meaning anything.</td></tr>
+      </table>
+
+      <div class="note"><b>Cost:</b> <code>ProcessSample</code> is one of the most expensive events
+      in the account's ingest, because it sends one sample per process per host. If it needs
+      trimming, <code>scripts/Set-ProcessSampleRate.ps1</code> lowers the sampling rate without
+      losing the dashboard.</div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="dash">
+    <div class="dash-head"><span class="num">3</span><h3>Web Availability (Synthetics)</h3></div>
+    <p class="dash-file">dashboard_synthetics.tf</p>
+    <div class="dash-body">
+      <p class="purpose"><strong>What it is for:</strong> the outside view. It says whether the
+      sites respond and how long they take, without depending on the server being instrumented
+      from the inside.</p>
+
+      <table class="facts">
+        <tr><th>What it shows</th><td>Four indicators at the top — sites monitored, sites failing in the last 30 minutes, 24-hour uptime&nbsp;% and average response time — and below them a table of uptime and latency per site, another of failures with the last error received, the trend for the 20 slowest sites, and the curve of failed checks.</td></tr>
+        <tr><th>Source</th><td><code>SyntheticCheck</code>, fed by the 135 monitors defined in <code>synthetics.tf</code>.</td></tr>
+        <tr><th>The monitors</th><td>Simple ping every 10 minutes from two regions (US&nbsp;East and US&nbsp;West), with SSL verification, against the <code>/public/healthcheck.ashx</code> endpoint. The exception is <span class="m">supernova.i-payout.com</span>, which has no such endpoint and is checked against its homepage.</td></tr>
+        <tr><th>How to read it</th><td>The failing-sites indicator turns red at one. The failures table carries the error message, which usually distinguishes an expired certificate from a real outage.</td></tr>
+      </table>
+
+      <div class="note"><b>Limitation:</b> the 135 monitors have no alert conditions yet. This
+      board has to be looked at; for now it does not notify on its own.</div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="dash">
+    <div class="dash-head"><span class="num">4</span><h3>SQL Server</h3></div>
+    <p class="dash-file">dashboard_mssql.tf</p>
+    <div class="dash-body">
+      <p class="purpose"><strong>What it is for:</strong> the health of the database instances,
+      with enough detail to tell "the database is slow" apart from "the database is blocked".</p>
+
+      <table class="facts">
+        <tr><th>What it shows</th><td>Four indicators — active connections, blocked processes, deadlocks per second and buffer pool hit rate; trends for memory, page life expectancy, transactions per second and lock waits; the top 15 wait types with how they evolve; and two per-database tables with I/O stalls and buffer pool consumed.</td></tr>
+        <tr><th>Source</th><td><code>nri-mssql</code> integration: <code>MssqlInstanceSample</code>, <code>MssqlDatabaseSample</code> and <code>MssqlWaitSample</code>.</td></tr>
+        <tr><th>How to read it</th><td>Blocked processes and deadlocks turn red at one: any non-zero value is worth a look. Page life expectancy falling is the classic early sign of memory pressure, before it shows up as latency.</td></tr>
+      </table>
+
+      <div class="note"><b>Incomplete coverage:</b> only <span class="m">UE2-SQL-A01</span> and
+      <span class="m">MIAT-VM-SQL-001</span> report today. Missing are
+      <span class="m">UE2-SQL-A02</span>, <span class="m">UE2-SQL-B02</span> and
+      <span class="m">BCA-VM-SQL-001</span>, which need <code>nri-mssql</code> installed. Separately,
+      <span class="m">UE1-TEST-SQL-A2</span> and <span class="m">UE1-TEST-SQL-B2</span> run SQL
+      Server 2025, which the integration does not support yet: those two cannot appear until New
+      Relic adds support.</div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="dash">
+    <div class="dash-head"><span class="num">5</span><h3>APM - Application Health</h3></div>
+    <p class="dash-file">dashboard_apm.tf</p>
+    <div class="dash-body">
+      <p class="purpose"><strong>What it is for:</strong> the golden signals of the roughly twenty
+      instrumented .NET applications — how much traffic they handle, how long they take and how
+      much they fail — on one screen.</p>
+
+      <table class="facts">
+        <tr><th>What it shows</th><td>Four global indicators (transactions per minute, average time, 95th percentile and error rate), the same three signals broken out per application over time, a comparison table of every app, and two transaction tables: the slowest and the most called.</td></tr>
+        <tr><th>Source</th><td>APM agents: the <code>Transaction</code> event.</td></tr>
+        <tr><th>Thresholds</th><td>Error rate turns amber at 1% and red at 5%.</td></tr>
+        <tr><th>How to read it</th><td>Average and p95 together say more than either alone: if the average looks fine and p95 spikes, the problem hits a minority of requests, not all of them.</td></tr>
+      </table>
+
+      <div class="note"><b>Scope:</b> it looks at the whole account, so production dominates —
+      IPS New alone does on the order of a million transactions a day. To see Test, use the twin
+      dashboard (number&nbsp;9), where that volume hides nothing.</div>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="dash">
+    <div class="dash-head"><span class="num">6</span><h3>Errors &amp; Exceptions</h3></div>
+    <p class="dash-file">dashboard_errors.tf</p>
+    <div class="dash-body">
+      <p class="purpose"><strong>What it is for:</strong> the complement of the previous one. APM
+      says <em>how much</em> is failing; this says <em>what</em> is failing: which exception, with
+      which message, in which application.</p>
+
+      <table class="facts">
+        <tr><th>What it shows</th><td>Total errors, how many applications are affected and the overall error rate; errors per app over time; a per-application table with the last message received; a ranking by exception class; and a table of the 25 most frequent messages, broken out by app, class and text.</td></tr>
+        <tr><th>Source</th><td>APM agents: <code>TransactionError</code> for the detail and <code>Transaction</code> to compute the percentage.</td></tr>
+        <tr><th>How to read it</th><td>Start from the exception-class ranking: it usually concentrates most errors into two or three types, and the message table below gives the exact text to search for in the code.</td></tr>
+      </table>
+
+      <div class="note"><b>Open finding:</b> when first checked (31 August 2026),
+      <span class="m">CommissionNetworks.com</span> had an error rate close to 58%.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAMILY 2 ============ -->
+<section class="page-break">
+  <h2>Test environment</h2>
+
+  <p class="lead">The four Test boards exist because in an account-wide dashboard the test
+  environment disappears underneath production volume. All of them carry their scope fixed in
+  code — <code>hostname LIKE 'UE1-TEST%'</code> and equivalents — injected into every query, so
+  they do not depend on anyone getting the filter right by hand.</p>
+
+  <!-- 7 -->
+  <div class="dash">
+    <div class="dash-head"><span class="num">7</span><h3>Test Environment - Health Overview</h3></div>
+    <p class="dash-file">dashboard_test_overview.tf</p>
+    <div class="dash-body">
+      <p class="purpose"><strong>What it is for:</strong> the one screen to look at to know
+      whether Test is fine. The other three boards each answer one question well; this one answers
+      "is the environment healthy right now?", which needs all three sources at once.</p>
+
+      <table class="facts">
+        <tr><th>How it is built</th><td>The top row is the only part you read when nothing is wrong: hosts reporting out of the 11 in the environment, hosts above 85% memory, hosts above 85% disk, IPS services stopped, application error rate and throughput. Everything below is the detail behind one of those six numbers.</td></tr>
+        <tr><th>Sections</th><td><em>Host resources</em>: a per-host health table with CPU, memory, uptime in days and agent version, plus disk per volume with free GB alongside, and trends. <em>IPS services</em>: which ones are stopped and how many per host. <em>Applications</em>: a per-application table with latency and errors. <em>Coverage</em>: which instrumentation layer reaches each host.</td></tr>
+        <tr><th>Source</th><td>All three at once: <code>SystemSample</code> and <code>StorageSample</code> from the agent, <code>windows_service_state</code> from nri-winservices, and <code>Transaction</code> from APM.</td></tr>
+      </table>
+
+      <h4>Two design decisions worth knowing</h4>
+
+      <p><strong>It measures its own blind spot.</strong> A dashboard showing only the hosts that
+      report would look complete while omitting precisely the ones sending nothing. That is why the
+      tile reads "Hosts reporting (of 11)": it compares against the known size of the environment,
+      not against whatever happened to arrive.</p>
+
+      <p><strong>It carries no hand-written host lists.</strong> The first version of the coverage
+      section named the five hosts not reporting on 15 September; four came online the next day and
+      the text sat there wrong for days before anyone noticed. Now the numbers always come from the
+      data and the text only explains how to read them.</p>
+
+      <div class="note"><b>About the thresholds:</b> 85% for memory and disk is not a round number
+      picked at random — it comes from what the fleet actually runs at (between 50% and 91% memory),
+      so it flags the genuinely tight cases without lighting up on normal Windows behaviour. Disk
+      has to be read alongside the <span class="m">Free GB</span> column: 87% of a 267&nbsp;GB volume
+      leaves 34&nbsp;GB and is fine, while 85% of a 32&nbsp;GB system drive leaves under 5&nbsp;GB
+      and is not.</div>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="dash">
+    <div class="dash-head"><span class="num">8</span><h3>Windows Services - Test Environment</h3></div>
+    <p class="dash-file">dashboard_windows_test.tf</p>
+    <div class="dash-body">
+      <p class="purpose"><strong>What it is for:</strong> the state of every Windows service on the
+      Test hosts — which are running, which are stopped and which changed state recently. It mirrors
+      the production "Windows Services - Dashboard", but with its scope pinned.</p>
+
+      <table class="facts">
+        <tr><th>What it shows</th><td>A summary (hosts, IPS services not running, services by state); a critical-services section with how many are stopped and which ones; services running, stopped and paused per host, each with its bar and its trend; the full service inventory; state transitions over the last 15 minutes in two tables, <em>Stopped</em> and <em>Started</em>; and breakdowns by service account, by start mode and by states other than the three usual ones.</td></tr>
+        <tr><th>Source</th><td><code>nri-winservices</code> integration: the <code>windows_service_state</code> metric.</td></tr>
+        <tr><th>Scope</th><td><code>hostname LIKE 'UE1-TEST%' OR hostname LIKE 'MIAT-VM%'</code>, injected into all sixteen queries. The production board, by contrast, has no scope and shows whatever reported.</td></tr>
+        <tr><th>Filters</th><td>Five combinable variables: <span class="m">Host</span>, <span class="m">Service name</span>, <span class="m">Display name</span>, <span class="m">State</span> and <span class="m">Start Mode</span>.</td></tr>
+      </table>
+
+      <h4>Why the time windows are what they are</h4>
+      <p>The Test hosts are scraped every 400 seconds, a cost decision: collecting <em>every</em>
+      service at that interval costs on the order of thirteen times less than doing it every 30
+      seconds, and it avoids having to curate a service list. The board's windows are tuned to that
+      rhythm. The variables use one day, because at three days or more New Relic reads
+      pre-aggregated rollups that lag several hours behind: a freshly onboarded host would return
+      nothing, the variable would fall back to its default, and every widget would render zero. The
+      transition tables use fifteen minutes, because five is shorter than the sampling interval and
+      they would almost always be empty.</p>
+
+      <div class="note"><b>Caveat:</b> the "IPS services not running" tile uses a hand-written name
+      list that has drifted from the real service names, so it <em>undercounts</em>. The
+      critical-services section, by contrast, matches by pattern
+      (<code>service_name LIKE 'ips%'</code>) and does not have that problem. For anything critical,
+      use that section or dashboard number&nbsp;10.</div>
+    </div>
+  </div>
+
+  <!-- 9 -->
+  <div class="dash">
+    <div class="dash-head"><span class="num">9</span><h3>APM - Test Environment</h3></div>
+    <p class="dash-file">dashboard_apm_test.tf</p>
+    <div class="dash-body">
+      <p class="purpose"><strong>What it is for:</strong> the same golden signals as the APM
+      dashboard, but scoped to the <span class="m">UE1-TEST-*</span> hosts, which are invisible in
+      the account-wide board next to production traffic.</p>
+
+      <table class="facts">
+        <tr><th>What it shows</th><td>Six indicators at the top (throughput, average time, 95th percentile, error rate, application count and hosts reporting); the signals broken out per host and per application over time; a comparison table of applications; rankings of the slowest and of the highest error rate; and the transaction and error detail.</td></tr>
+        <tr><th>Source</th><td>APM agents: <code>Transaction</code> and <code>TransactionError</code>.</td></tr>
+        <tr><th>Filters</th><td><span class="m">Application</span> and <span class="m">Host</span> variables.</td></tr>
+      </table>
+
+      <div class="note"><b>A tile that doubles as a rollout tracker:</b> "Hosts reporting APM (of 4)"
+      reads <b>2</b>, and will keep reading 2 until the .NET agent is installed on the two web hosts.
+      <span class="m">UE1-TEST-WEB-A1</span> runs IIS but has no .NET agent, and
+      <span class="m">UE1-TEST-WEB-B1</span> has no agent at all. The number rises on its own as the
+      rollout progresses.</div>
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="dash">
+    <div class="dash-head"><span class="num">10</span><h3>Test - Critical Services Uptime</h3></div>
+    <p class="dash-file">critical_services.tf</p>
+    <div class="dash-body">
+      <p class="purpose"><strong>What it is for:</strong> tracking the services the business
+      requires at 100% availability. It is the only one of the eleven dashboards with an alert
+      behind it: the others have to be watched, this one notifies.</p>
+
+      <table class="facts">
+        <tr><th>What it shows</th><td>Critical services not running, hosts that run them, services reporting and combined uptime; a table with the uptime&nbsp;% and current state of each host + service pair; and the trend of that uptime over time.</td></tr>
+        <tr><th>Which services</th><td><code>ipsportalcoreschedulerservice</code>, <code>ips_abacollectorservice</code>, <code>ips_emailsenderservice</code>, <code>ips_feecollector</code>, <code>ips_fxservice</code>, <code>ips_healthmonitor</code>, <code>ips_loadvirtualaccountsservice</code> and both names Ripple reports under (<code>ripplepaymentsservice</code> on Test, <code>ipsripplepaymentsservice</code> in production; both are listed so a renamed deployment stays covered).</td></tr>
+        <tr><th>Scope</th><td>Every UE1-TEST host. A facet only forms where a service actually reports, so hosts that run none of them never create alert targets. Today only <span class="m">UE1-TEST-SRV-A1</span> runs them, with all eight active; any Test host that picks one up is covered automatically.</td></tr>
+        <tr><th>What uptime means</th><td>The percentage of samples in the <span class="m">running</span> state within the selected time range, at the resolution of the 400-second scrape. It is not continuous measurement: it is the sampling every 400&nbsp;s.</td></tr>
+      </table>
+
+      <h4>The alert behind it</h4>
+      <p>The policy is called <span class="m">Test - Critical services</span> and its condition
+      "Critical service is not running on a Test host". It opens one incident per host and service
+      combination, aggregates in 600-second windows and notifies Slack in
+      <span class="m">#newrelic-errors</span>. Loss of signal also triggers an alert: if a host stops
+      reporting, that is announced rather than passing unnoticed. In practice a stopped service
+      reaches Slack within about 10 to 20 minutes — the price of having chosen a 400-second scrape
+      over a 30-second one.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FAMILY 3 ============ -->
+<section>
+  <h2>Production</h2>
+
+  <!-- 11 -->
+  <div class="dash">
+    <div class="dash-head"><span class="num">11</span><h3>Production - Critical Services Uptime</h3></div>
+    <p class="dash-file">critical_services.tf</p>
+    <div class="dash-body">
+      <p class="purpose"><strong>What it is for:</strong> the same critical-services board, pointed
+      at the production hosts <span class="m">BCA-VM-*</span> and <span class="m">UE2-*</span>.</p>
+
+      <table class="facts">
+        <tr><th>What it shows</th><td>Exactly the same six widgets as its Test twin, with an identical service list and the scope changed.</td></tr>
+        <tr><th>Key difference</th><td><b>It has no alert wired to it.</b> It is visibility only: the critical-services alert covers Test exclusively. Extending it to production was proposed and deferred (23 September 2026).</td></tr>
+        <tr><th>Current coverage</th><td>The only production host with data is <span class="m">BCA-VM-SRV-001</span>, which runs seven of the listed services — it does not run <code>ips_healthmonitor</code>. The rest of production will appear as the nri-winservices rollout progresses.</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ APPENDICES ============ -->
+<section class="page-break">
+  <h2>Appendices</h2>
+
+  <p class="kicker">Appendix A</p>
+  <h3 style="margin-bottom:2mm">Where the data comes from</h3>
+  <p>The eleven dashboards feed on four sources. Each one needs something different on the
+  servers, and that is where the coverage gaps come from.</p>
+
+  <dl class="gloss">
+    <dt>SystemSample · StorageSample · ProcessSample</dt>
+    <dd>Infrastructure agent. The base layer: CPU, memory, disk and processes. Present on all 27
+    hosts in the account.</dd>
+
+    <dt>Transaction · TransactionError</dt>
+    <dd>APM agents (.NET). They require installing the agent inside the application. They cover the
+    ~20 production apps and 2 of the 4 Test hosts.</dd>
+
+    <dt>windows_service_state (Metric)</dt>
+    <dd>nri-winservices integration. Bundled with the Windows agent — nothing to install: it is
+    enabled by dropping a config file and restarting the agent, which is what
+    <code>scripts/Enable-NriWinservices.ps1</code> automates.</dd>
+
+    <dt>MssqlInstanceSample · MssqlDatabaseSample · MssqlWaitSample</dt>
+    <dd>nri-mssql integration. Unlike the previous one, this does have to be installed separately on
+    each database host.</dd>
+
+    <dt>SyntheticCheck</dt>
+    <dd>Synthetic monitors. They need nothing on the servers: they run from New Relic's own
+    infrastructure and look at the sites from outside.</dd>
+  </dl>
+
+  <p class="kicker" style="margin-top:5.5mm">Appendix B</p>
+  <h3 style="margin-bottom:2mm">What is missing for the boards to fill up</h3>
+  <p>State as of 25 September 2026. None of these gaps is a dashboard problem: they are servers the
+  instrumentation has not reached yet.</p>
+
+  <table class="index">
+    <thead><tr><th>Layer</th><th>Coverage</th><th>What is missing</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Infrastructure agent</td>
+        <td>27 of 27 hosts</td>
+        <td>Nothing. The only complete layer.</td>
+      </tr>
+      <tr>
+        <td>nri-winservices</td>
+        <td>11 of 27 hosts</td>
+        <td>Both MIAT-VM hosts and 19 of the 20 in production. Affects dashboards 8, 10 and 11.</td>
+      </tr>
+      <tr>
+        <td>nri-mssql</td>
+        <td>2 instances</td>
+        <td>UE2-SQL-A02, UE2-SQL-B02 and BCA-VM-SQL-001. The two Test SQL hosts run SQL Server 2025 and are blocked until the integration supports it.</td>
+      </tr>
+      <tr>
+        <td>.NET agent (APM)</td>
+        <td>2 of 4 Test hosts</td>
+        <td>UE1-TEST-WEB-A1 (runs IIS with no agent) and UE1-TEST-WEB-B1 (no agent).</td>
+      </tr>
+      <tr>
+        <td>Alerts on synthetics</td>
+        <td>0 of 135 monitors</td>
+        <td>Dashboard 3 shows the outages but does not notify yet.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+</body>
+
+</html>

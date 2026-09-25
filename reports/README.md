@@ -8,25 +8,29 @@ date below before quoting any number from them.
 |---|---|---|
 | `IPAYOUT - New Relic agent status (TEST).xlsx` | English | 2026-09-11 |
 | `IPAYOUT - Estado agente New Relic (TEST).xlsx` | Spanish | 2026-09-11 |
+| `2026-09-25 New Relic dashboards guide.pdf` | English | 2026-09-25 |
 | `2026-09-25 Guia de dashboards New Relic.pdf` | Spanish | 2026-09-25 |
 
 ## The dashboard guide
 
-`2026-09-25 Guia de dashboards New Relic.pdf` is a different kind of document from the
-snapshots below: it explains what each of the 11 dashboards we built shows, what it is
-for, which data source feeds it and what it does not cover yet. Dashboard, page and
-widget names stay in English because that is how they live in New Relic.
+The dashboard guide is a different kind of document from the snapshots below: it explains
+what each of the 11 dashboards we built shows, what it is for, which data source feeds it
+and what it does not cover yet. It exists in two languages with identical content; in the
+Spanish one, dashboard, page and widget names stay in English because that is how they
+live in New Relic.
 
-It is written as HTML and rendered with headless Chrome. The source sits next to it as
-`2026-09-25 Guia de dashboards New Relic.html`; to regenerate after an edit:
+Both are written as HTML and rendered with headless Chrome, sharing the same stylesheet.
+Each `.pdf` has its `.html` source next to it — edit the source, then regenerate:
 
 ```sh
-google-chrome --headless --no-pdf-header-footer \
-  --print-to-pdf="2026-09-25 Guia de dashboards New Relic.pdf" \
-  "2026-09-25 Guia de dashboards New Relic.html"
+for f in "2026-09-25 New Relic dashboards guide" "2026-09-25 Guia de dashboards New Relic"; do
+  google-chrome --headless --no-pdf-header-footer \
+    --print-to-pdf="$f.pdf" "$f.html"
+done
 ```
 
-The coverage figures in it (Appendix B) are point-in-time like everything else here.
+Edits that change wording have to be made in both files; there is no shared source.
+The coverage figures (Appendix B) are point-in-time like everything else here.
 
 ## What the TEST snapshots cover
 
