@@ -10,6 +10,38 @@ date below before quoting any number from them.
 | `IPAYOUT - Estado agente New Relic (TEST).xlsx` | Spanish | 2026-09-11 |
 | `2026-09-25 New Relic dashboards guide.pdf` | English | 2026-09-25 |
 | `2026-09-25 Guia de dashboards New Relic.pdf` | Spanish | 2026-09-25 |
+| `2026-09-28 New Relic agent status (all environments).xlsx` | English | 2026-09-28 |
+
+## The agent status sheet
+
+`2026-09-28 New Relic agent status (all environments).xlsx` lists every host across
+AWS DR, AWS TEST, production (on-premise) and MIAT, with its infrastructure agent
+version, whether it is still reporting, and which integrations reach it
+(nri-winservices, APM, nri-mssql). Rows are coloured: green reporting and up to date,
+amber agent below 1.80, red not reporting or no agent, grey managed AWS service.
+
+Environment, OS and Role come from the client's own host inventory; everything else
+comes from New Relic. Where the two disagree on a name, the inventory name is in the
+Host column and the New Relic name in "Reported as" -- `UE1-TEST-SMTP-A1` reports
+truncated as `UE1-TEST-SMT-A1`, and `UE1-TEST-REDIS-A1` reports as its EC2 private DNS
+name `ip-10-24-132-223`.
+
+What it surfaced on 2026-09-28:
+
+- **Five UE2 hosts stopped reporting within the same minute**, 2026-09-17 16:34 UTC:
+  `UE2-ADC-A02`, `UE2-ADC-B02`, `UE2-SQL-A02`, `UE2-SQL-B02` and `UE2-SQL-A01`. One
+  change - network, firewall or the environment shut down - not five failures. It takes
+  out both DR domain controllers and both DR databases.
+- **`UE2-SMTP-A01` and `UE2-REDIS-A02` have never had an agent.** The Redis host is
+  Ubuntu, so it needs the Linux agent, not `Install-NewRelicInfraAgent.ps1`.
+- **`AWS RDS` and the load balancer are invisible.** They cannot take an agent and the
+  AWS integration is not configured in the account - no `AwsRdsDbInstanceSample`, no
+  `aws.*` metrics at all.
+- **No DR host runs an agent below 1.80.** The old agents are all in production
+  on-premise: six BCA hosts on 1.11.45, `BCA-VM-SRV-001` on 1.62.0, and the two MIAT
+  hosts on 1.20.7 and 1.62.0.
+- `UE2-SQL-A01` reports but is in neither inventory; `MIAT-VM-SMT-001` has not reported
+  since 2026-08-12.
 
 ## The dashboard guide
 
@@ -71,4 +103,18 @@ FACET hostname SINCE 1 hour ago LIMIT MAX
 
 SELECT uniqueCount(appName), count(*) FROM Transaction
 WHERE host LIKE 'UE1-TEST%' FACET host SINCE 1 hour ago LIMIT MAX
+```
+
+The agent status sheet is built from one query plus three membership checks. The 90-day
+window matters: it catches hosts that have stopped reporting, which a 1-day window hides.
+
+```sql
+SELECT latest(timestamp), latest(agentVersion), latest(operatingSystem),
+       latest(linuxDistribution), latest(awsRegion)
+FROM SystemSample FACET hostname SINCE 90 days ago LIMIT MAX
+
+SELECT uniques(hostname, 500) FROM Metric
+WHERE metricName = 'windows_service_state' SINCE 1 day ago
+SELECT uniques(host, 500) FROM Transaction SINCE 1 day ago
+SELECT uniques(hostname) FROM MssqlInstanceSample SINCE 1 day ago
 ```
