@@ -12,8 +12,13 @@
 # dashboard is the percentage of samples in "running" state at that same resolution.
 
 locals {
-  critical_services_scope      = "hostname LIKE 'UE1-TEST%'"
-  critical_services_scope_prod = "(hostname LIKE 'BCA-VM%' OR hostname LIKE 'UE2%')"
+  critical_services_scope = "hostname LIKE 'UE1-TEST%'"
+  # Production is BCA-VM only. UE2-* was in this scope until 2026-09-30, when the
+  # client host inventory confirmed UE2 is the AWS DR environment, not production --
+  # so the "Production" dashboard was silently mixing the two. DR has its own scope
+  # and its own dashboard below.
+  critical_services_scope_prod = "hostname LIKE 'BCA-VM%'"
+  critical_services_scope_dr   = "hostname LIKE 'UE2%'"
   critical_services_srv        = "'ipsportalcoreschedulerservice', 'ips_abacollectorservice', 'ips_emailsenderservice', 'ips_feecollector', 'ips_fxservice', 'ips_healthmonitor', 'ips_loadvirtualaccountsservice', 'ripplepaymentsservice', 'ipsripplepaymentsservice'"
 }
 
@@ -280,6 +285,103 @@ resource "newrelic_one_dashboard" "prod_critical_services" {
       nrql_query {
         account_id = 1468011
         query      = "SELECT percentage(count(*), WHERE state = 'running') AS 'Uptime %' FROM Metric WHERE metricName = 'windows_service_state' AND ${local.critical_services_scope_prod} AND service_name IN (${local.critical_services_srv}) FACET hostname, service_name TIMESERIES AUTO LIMIT MAX"
+      }
+    }
+  }
+}
+
+# DR twin of the uptime dashboard. Visibility only, like the production one -- the
+# critical-services ALERT still covers Test exclusively.
+#
+# Until the winservices rollout reaches DR this shows a single host: as of 2026-09-30
+# only UE2-SMTP-A01 reports windows_service_state, and it runs none of these services.
+# An empty board here is the accurate answer, not a broken one.
+resource "newrelic_one_dashboard" "dr_critical_services" {
+  account_id  = 1468011
+  name        = "DR - Critical Services Uptime"
+  description = "Uptime of the services required at 100% on the DR hosts (UE2-*). Uptime is the percentage of winservices samples in the running state over the selected time range. No alert is wired to this scope."
+  permissions = "public_read_write"
+
+  page {
+    name = "Overview"
+
+    widget_billboard {
+      title    = "Critical services not running"
+      row      = 1
+      column   = 1
+      width    = 3
+      height   = 3
+      critical = 1
+
+      nrql_query {
+        account_id = 1468011
+        query      = "SELECT count(*) AS 'Not running' FROM (FROM Metric SELECT latest(state) AS 'st' WHERE metricName = 'windows_service_state' AND ${local.critical_services_scope_dr} AND service_name IN (${local.critical_services_srv}) FACET hostname, service_name LIMIT MAX) WHERE st != 'running'"
+      }
+    }
+
+    widget_billboard {
+      title  = "Hosts with critical services"
+      row    = 1
+      column = 4
+      width  = 3
+      height = 3
+
+      nrql_query {
+        account_id = 1468011
+        query      = "SELECT uniqueCount(hostname) AS 'Hosts' FROM Metric WHERE metricName = 'windows_service_state' AND ${local.critical_services_scope_dr} AND service_name IN (${local.critical_services_srv})"
+      }
+    }
+
+    widget_billboard {
+      title  = "Services reporting"
+      row    = 1
+      column = 7
+      width  = 3
+      height = 3
+
+      nrql_query {
+        account_id = 1468011
+        query      = "SELECT uniqueCount(service_name) AS 'Services' FROM Metric WHERE metricName = 'windows_service_state' AND ${local.critical_services_scope_dr} AND service_name IN (${local.critical_services_srv})"
+      }
+    }
+
+    widget_billboard {
+      title  = "Combined uptime %"
+      row    = 1
+      column = 10
+      width  = 3
+      height = 3
+
+      nrql_query {
+        account_id = 1468011
+        query      = "SELECT percentage(count(*), WHERE state = 'running') AS 'Uptime %' FROM Metric WHERE metricName = 'windows_service_state' AND ${local.critical_services_scope_dr} AND service_name IN (${local.critical_services_srv})"
+      }
+    }
+
+    widget_table {
+      title  = "Uptime % and current state by host and service"
+      row    = 4
+      column = 1
+      width  = 6
+      height = 5
+
+      nrql_query {
+        account_id = 1468011
+        query      = "SELECT percentage(count(*), WHERE state = 'running') AS 'Uptime %', latest(state) AS 'Now', latest(display_name) AS 'Display name' FROM Metric WHERE metricName = 'windows_service_state' AND ${local.critical_services_scope_dr} AND service_name IN (${local.critical_services_srv}) FACET hostname, service_name LIMIT MAX"
+      }
+    }
+
+    widget_line {
+      title          = "Uptime % by host and service - trend"
+      row            = 4
+      column         = 7
+      width          = 6
+      height         = 5
+      legend_enabled = true
+
+      nrql_query {
+        account_id = 1468011
+        query      = "SELECT percentage(count(*), WHERE state = 'running') AS 'Uptime %' FROM Metric WHERE metricName = 'windows_service_state' AND ${local.critical_services_scope_dr} AND service_name IN (${local.critical_services_srv}) FACET hostname, service_name TIMESERIES AUTO LIMIT MAX"
       }
     }
   }
