@@ -57,7 +57,7 @@ GIT_SSH_COMMAND='ssh -i ~/.ssh/id_ed25519_github -o IdentitiesOnly=yes' git push
 - **`UE2-WEB-A01` infrastructure agent is down** since 2026-09-30 12:18 UTC while the host is healthy -- APM keeps reporting 600+ transactions per 15 min. `Restart-Service newrelic-infra`, not a VM problem.
 - **DR runs hot on memory**: UE2-SQL-A02 95.5%, UE2-SQL-B02 93.7%, UE2-ADC-B02 93.0%, UE2-SRV-A01 91.1%.
 - **`CommissionNetworks.com` has a 66.67% error rate in DR** (it was ~58% in production on 2026-08-31).
-- Roll out nri-winservices to the 12 DR hosts that lack it; only UE2-SMTP-A01 reports today, and it runs no IPS service.
+- Roll out nri-winservices to the remaining DR hosts. Reporting as of 2026-10-07: UE2-SMTP-A01, UE2-ADC-A02/B02, UE2-SQL-A02 and UE2-SQL-B02 (the last fixed 2026-10-07 — the config file had simply never been written on the host; `scripts/Diagnose-NriWinservices.ps1` found it in one run). Still missing: UE2-API-A01/A02/B01, UE2-SRV-A01, UE2-WEB-A01/A02/B01 and the Redis host. On UE2-SQL-B02 every SQL Server service is running; `ips_deletefilemanagerservice` is stopped there but is not in the critical list, so it does not alert.
 
 - Roll out `scripts/Enable-NriWinservices.ps1` to the 26 hosts without the integration (test one first, then production). Until then the Test dashboard stays empty.
 - Alert policies + NRQL conditions notifying Slack: host down (all hosts, including DR — `UE2-WEB-A01` went silent on 2026-09-30 and nothing fired), synthetic failures/slowness, disk > 90%, memory > 90%, high error rate. When first measured, UE2-SQL-A01 (disk P: 96%, memory 94%) and BCA-VM-SQL-001 would already trigger.
